@@ -1,24 +1,48 @@
+function Invoke-Sfdx {
+    [CmdletBinding()]
+    Param([Parameter(Mandatory = $true)][string] $Command)        
+    Write-Verbose $Command
+    return Invoke-Expression -Command $Command
+}
+
+function Show-SfdxResult {
+    [CmdletBinding()]
+    Param([Parameter(Mandatory = $true)][psobject] $Result)           
+    $result = $Result | ConvertFrom-Json
+    if ($result.status -ne 0) {
+        Write-Debug $result
+        throw ($result.message)
+    }
+    return $result.result
+}
+
 function Watch-SalesforceLogs {
     [CmdletBinding()]
     Param(
         [Parameter(Mandatory = $true)][string] $Username,        
-        [Parameter(Mandatory = $false)][switch] $UseDebugLogSetup        
+        [Parameter(Mandatory = $false)][switch] $SkipTraceFlag,
+        [Parameter(Mandatory = $false)][string] $DebugLevel        
     )  
-    $command = "sfdx force:apex:log:tail "  
-    if ($UseDebugLogSetup) {
-        $command += ""
+    $command = "sfdx force:apex:log:tail"      
+    if ($SkipTraceFlag) {    
+        $command += " --skiptraceflag "
     }
-    else {    
-        $command += "--skiptraceflag "
+    if ($DebugLevel) {
+        $command += " --debuglevel $DebugLevel"
     }
-    $command += "--color -u $Username"
+    $command += " --color"
+    $command += " --targetusername $Username"
+    $command += " --json"
     return Invoke-Sfdx -Command $command
 }
 
 function Get-SalesforceLogs {
     [CmdletBinding()]
     Param([Parameter(Mandatory = $true)][string] $Username)  
-    $result = Invoke-Sfdx -Command "sfdx force:apex:log:list -u $Username --json"
+    $command = "sfdx force:apex:log:list -u $Username --json"
+    $command += " --targetusername $Username"
+    $command += " --json"
+    $result = Invoke-Sfdx -Command $command
     return Show-SfdxResult -Result $result
 }
 
@@ -30,15 +54,26 @@ function Get-SalesforceLog {
         [Parameter(Mandatory = $true)][string] $Username
     )   
     
-    if ((-not $LogId) -and (-not $Last)) { throw "Please provide either -LogId OR -Last" }
+    if ((-not $LogId) -and (-not $Last)) { 
+        throw "Please provide either -LogId OR -Last" 
+    }
 
     if ($Last) {
         $LogId = (Get-SalesforceLogs -Username $Username | Sort-Object StartTime -Descending | Select-Object -First 1).Id
     }
 
-    $result = Invoke-Sfdx -Command "sfdx force:apex:log:get -i $LogId -u $Username --json"
+    # $command = "sfdx force:apex:log:get -i $LogId -u $Username --json"
+    $command = "sfdx force:apex:log:get"
+    $command += " --logid $LogId"
+    $command += " --targetusername $Username"
+    $command += " --json"    
+    
+    $result = Invoke-Sfdx -Command $command    
     $result = $result | ConvertFrom-Json
-    # TODO: Check status
+    if ($result.status -ne 0) {
+        Write-Debug $result
+        throw ($result.message)
+    }
     return $result.result.log
 }
 
