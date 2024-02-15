@@ -1,13 +1,13 @@
 function Invoke-Sfdx {
     [CmdletBinding()]
-    Param([Parameter(Mandatory = $true)][string] $Command)        
+    Param([Parameter(Mandatory = $true)][string] $Command)
     Write-Verbose $Command
     return Invoke-Expression -Command $Command
 }
 
 function Show-SfdxResult {
     [CmdletBinding()]
-    Param([Parameter(Mandatory = $true)][psobject] $Result)           
+    Param([Parameter(Mandatory = $true)][psobject] $Result)
     $result = $Result | ConvertFrom-Json
     if ($result.status -ne 0) {
         Write-Debug $result
@@ -19,12 +19,12 @@ function Show-SfdxResult {
 function Watch-SalesforceLogs {
     [CmdletBinding()]
     Param(
-        [Parameter(Mandatory = $true)][string] $Username,        
+        [Parameter(Mandatory = $true)][string] $Username,
         [Parameter(Mandatory = $false)][switch] $SkipTraceFlag,
-        [Parameter(Mandatory = $false)][string] $DebugLevel        
-    )  
-    $command = "sfdx force:apex:log:tail"      
-    if ($SkipTraceFlag) {    
+        [Parameter(Mandatory = $false)][string] $DebugLevel
+    )
+    $command = "sfdx force:apex:log:tail"
+    if ($SkipTraceFlag) {
         $command += " --skiptraceflag "
     }
     if ($DebugLevel) {
@@ -38,7 +38,7 @@ function Watch-SalesforceLogs {
 
 function Get-SalesforceLogs {
     [CmdletBinding()]
-    Param([Parameter(Mandatory = $true)][string] $Username)  
+    Param([Parameter(Mandatory = $true)][string] $Username)
     $command = "sfdx force:apex:log:list -u $Username --json"
     $command += " --targetusername $Username"
     $command += " --json"
@@ -52,10 +52,10 @@ function Get-SalesforceLog {
         [Parameter(Mandatory = $false)][string] $LogId,
         [Parameter(Mandatory = $false)][switch] $Last,
         [Parameter(Mandatory = $true)][string] $Username
-    )   
-    
-    if ((-not $LogId) -and (-not $Last)) { 
-        throw "Please provide either -LogId OR -Last" 
+    )
+
+    if ((-not $LogId) -and (-not $Last)) {
+        throw "Please provide either -LogId OR -Last"
     }
 
     if ($Last) {
@@ -66,9 +66,9 @@ function Get-SalesforceLog {
     $command = "sfdx force:apex:log:get"
     $command += " --logid $LogId"
     $command += " --targetusername $Username"
-    $command += " --json"    
-    
-    $result = Invoke-Sfdx -Command $command    
+    $command += " --json"
+
+    $result = Invoke-Sfdx -Command $command
     $result = $result | ConvertFrom-Json
     if ($result.status -ne 0) {
         Write-Debug $result
@@ -79,15 +79,15 @@ function Get-SalesforceLog {
 
 function Export-SalesforceLogs {
     [CmdletBinding()]
-    Param(        
+    Param(
         [Parameter(Mandatory = $false)][int] $Limit = 50,
         [Parameter(Mandatory = $false)][string] $OutputFolder = $null,
         [Parameter(Mandatory = $true)][string] $Username
-    )        
-        
+    )
+
     if (($OutputFolder -eq $null) -or ($OutputFolder -eq "") ) {
         $currentFolder = (Get-Location).Path
-        $OutputFolder = $currentFolder        
+        $OutputFolder = $currentFolder
     }
     if ((Test-Path -Path $OutputFolder) -eq $false) { throw "Folder $OutputFolder does not exist" }
     Write-Verbose "Output Folder: $OutputFolder"
@@ -98,13 +98,13 @@ function Export-SalesforceLogs {
         return
     }
 
-    $logsCount = ($logs | Measure-Object).Count + 1    
+    $logsCount = ($logs | Measure-Object).Count + 1
     $i = 0
     foreach ($log in $logs) {
         $fileName = $log.Id + ".log"
         $filePath = Join-Path -Path $OutputFolder -ChildPath $fileName
         Write-Verbose "Exporting file: $filePath"
-        Get-SalesforceLog -LogId $log.Id -Username $Username | Out-File -FilePath $filePath   
+        Get-SalesforceLog -LogId $log.Id -Username $Username | Out-File -FilePath $filePath
 
         $percentCompleted = ($i / $logsCount) * 100
         Write-Progress -Activity "Export Salesforce Logs" -Status "Completed $fileName" -PercentComplete $percentCompleted
@@ -116,7 +116,7 @@ function Convert-SalesforceLog {
     [CmdletBinding()]
     Param(
         [Parameter(ValueFromPipeline, Mandatory = $true)][string] $Log
-    )      
+    )
 
     Write-Warning "Function still in Development"
 
@@ -125,7 +125,7 @@ function Convert-SalesforceLog {
     $line = $lines | Select-Object -First 5
     foreach ($line in $lines) {
         $statements = $line.Split('|')
-        
+
         $result = New-Object -TypeName PSObject
         $result | Add-Member -MemberType NoteProperty -Name 'DateTime' -Value $statements[0]
         $result | Add-Member -MemberType NoteProperty -Name 'LogType' -Value $statements[1]
@@ -138,7 +138,7 @@ function Convert-SalesforceLog {
 
 function Out-Notepad {
     [CmdletBinding()]
-    Param([Parameter(ValueFromPipeline, Mandatory = $true)][string] $Content)     
+    Param([Parameter(ValueFromPipeline, Mandatory = $true)][string] $Content)
     $filename = New-TemporaryFile
     $Content | Out-File -FilePath $filename
     notepad $filename
