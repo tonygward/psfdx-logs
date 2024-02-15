@@ -1,11 +1,11 @@
-function Invoke-Sfdx {
+function Invoke-Sf {
     [CmdletBinding()]
     Param([Parameter(Mandatory = $true)][string] $Command)
     Write-Verbose $Command
     return Invoke-Expression -Command $Command
 }
 
-function Show-SfdxResult {
+function Show-SfResult {
     [CmdletBinding()]
     Param([Parameter(Mandatory = $true)][psobject] $Result)
     $result = $Result | ConvertFrom-Json
@@ -19,31 +19,34 @@ function Show-SfdxResult {
 function Watch-SalesforceLogs {
     [CmdletBinding()]
     Param(
-        [Parameter(Mandatory = $true)][string] $Username,
+        [Parameter(Mandatory = $false)][string] $Username,
         [Parameter(Mandatory = $false)][switch] $SkipTraceFlag,
         [Parameter(Mandatory = $false)][string] $DebugLevel
     )
-    $command = "sfdx force:apex:log:tail"
+    $command = "sf apex tail log"
+    if ($Username) {
+        $commad += " --target-org $Username"
+    }
     if ($SkipTraceFlag) {
-        $command += " --skiptraceflag "
+        $command += " --skip-trace-flag "
     }
     if ($DebugLevel) {
-        $command += " --debuglevel $DebugLevel"
+        $command += " --debug-level $DebugLevel"
     }
     $command += " --color"
-    $command += " --targetusername $Username"
-    $command += " --json"
-    return Invoke-Sfdx -Command $command
+    return Invoke-Sf -Command $command
 }
 
 function Get-SalesforceLogs {
     [CmdletBinding()]
-    Param([Parameter(Mandatory = $true)][string] $Username)
-    $command = "sfdx force:apex:log:list -u $Username --json"
-    $command += " --targetusername $Username"
+    Param([Parameter(Mandatory = $false)][string] $Username)
+    $command = "sf apex list log"
+    if ($Username) {
+        $comand += " --target-org $Username"
+    }
     $command += " --json"
-    $result = Invoke-Sfdx -Command $command
-    return Show-SfdxResult -Result $result
+    $result = Invoke-Sf -Command $command
+    return Show-SfResult -Result $result
 }
 
 function Get-SalesforceLog {
@@ -62,13 +65,12 @@ function Get-SalesforceLog {
         $LogId = (Get-SalesforceLogs -Username $Username | Sort-Object StartTime -Descending | Select-Object -First 1).Id
     }
 
-    # $command = "sfdx force:apex:log:get -i $LogId -u $Username --json"
-    $command = "sfdx force:apex:log:get"
-    $command += " --logid $LogId"
-    $command += " --targetusername $Username"
+    $command = "sf apex get log"
+    $command += " --log-id $LogId"
+    $command += " --target-org $Username"
     $command += " --json"
 
-    $result = Invoke-Sfdx -Command $command
+    $result = Invoke-Sf -Command $command
     $result = $result | ConvertFrom-Json
     if ($result.status -ne 0) {
         Write-Debug $result
